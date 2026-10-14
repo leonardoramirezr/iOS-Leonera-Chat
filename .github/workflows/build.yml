@@ -1,0 +1,339 @@
+name: Build
+
+# Every push builds the app, signs it Ad Hoc and publishes the IPA on GitHub Pages, to be installed
+# from Safari on the registered iPhones. Without the signing secrets it builds an unsigned IPA instead.
+on:
+  push:
+    branches: ['**', '!gh-pages']
+  workflow_dispatch:
+
+# No build is ever cancelled: main's run one after another (each takes the next version), the rest
+# each in a group of its own.
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && 'main' || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: read
+
+env:
+  APP_NAME: Leonera Chat
+  SCHEME: LeoneraChat
+  APP_BUNDLE_ID: com.leonardoramirezr.leonerachat
+  HOMEBREW_NO_AUTO_UPDATE: '1'
+  HOMEBREW_NO_INSTALL_CLEANUP: '1'
+
+jobs:
+  build:
+    name: Build, sign and publish
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check the signing secrets
+        id: secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          present=""
+          missing=""
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            if [ -n "${!name}" ]; then present="$present $name"; else missing="$missing $name"; fi
+          done
+          if [ -z "$present" ]; then
+            echo "::warning title=Unsigned build::No signing secrets are set: building an unsigned IPA, which can't be installed on an iPhone."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$missing" ]; then
+            echo "::error title=Missing signing secrets::Only some of the signing secrets are set. Missing:$missing. Set all four (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID) as repository secrets in Settings › Secrets and variables › Actions, or none of them for an unsigned build."
+            exit 1
+          else
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pick the version and the tag
+        id: version
+        run: |
+          git fetch --force --tags --quiet origin
+          last=$( { git tag --list '0.*.0' | grep -E '^0\.[0-9]+\.0$' || true; } | sort -t. -k2,2n | tail -n1)
+
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            # A re-run keeps the version the first attempt took.
+            tag=$( { git tag --points-at "$GITHUB_SHA" | grep -E '^0\.[0-9]+\.0$' || true; } | head -n1)
+            if [ -z "$tag" ]; then
+              minor=$(echo "${last:-0.0.0}" | cut -d. -f2)
+              tag="0.$((minor + 1)).0"
+            fi
+            version=$tag
+            channel=stable
+          else
+            tag="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+            version=${last:-0.0.0}
+            channel=prerelease
+          fi
+
+          echo "Tag $tag, version $version ($GITHUB_RUN_NUMBER), $channel."
+          {
+            echo "TAG=$tag"
+            echo "VERSION=$version"
+            echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER"
+            echo "CHANNEL=$channel"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild -version
+
+      - name: Check the App Store Connect API key and the devices
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          python3 scripts/asc.py check
+          key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          python3 scripts/asc.py write-key "$key_path"
+          echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Note the Apple Development certificates already in the keychain
+        if: steps.secrets.outputs.signed == 'true'
+        run: |
+          python3 scripts/asc.py keychain-serials > "$RUNNER_TEMP/development-certificates.txt"
+          echo "$(grep -c . "$RUNNER_TEMP/development-certificates.txt" || true) Apple Development certificate(s) in the keychain."
+
+      - name: Archive
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild archive \
+            -project "$SCHEME.xcodeproj" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/$SCHEME.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            APP_BUNDLE_ID="$APP_BUNDLE_ID" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+      - name: Export the Ad Hoc IPA
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # release-testing is Ad Hoc: the cloud-managed distribution certificate, and profiles with
+          # every registered device.
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>release-testing</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>$APPLE_TEAM_ID</string>
+            <key>destination</key>
+            <string>export</string>
+            <key>thinning</key>
+            <string>&lt;none&gt;</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/$SCHEME.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+          ipa=$(find "$RUNNER_TEMP/export" -maxdepth 1 -name '*.ipa' | head -n1)
+          [ -n "$ipa" ] || { echo "::error::The export produced no IPA."; exit 1; }
+          echo "IPA_PATH=$ipa" >> "$GITHUB_ENV"
+
+      - name: Verify the Ad Hoc profiles
+        id: verify
+        if: steps.secrets.outputs.signed == 'true'
+        run: |
+          python3 - "$IPA_PATH" <<'EOF'
+          import os, pathlib, plistlib, subprocess, sys, tempfile, zipfile
+
+          counts = []
+          with tempfile.TemporaryDirectory() as directory:
+              zipfile.ZipFile(sys.argv[1]).extractall(directory)
+              payload = pathlib.Path(directory, "Payload")
+              bundles = [p for p in payload.rglob("*") if p.is_dir() and p.suffix in (".app", ".appex")]
+              if not bundles:
+                  sys.exit("::error::The IPA has no app in it.")
+              for bundle in bundles:
+                  name = bundle.relative_to(payload)
+                  profile = bundle / "embedded.mobileprovision"
+                  if not profile.exists():
+                      sys.exit(f"::error::{name} has no embedded.mobileprovision.")
+                  decoded = subprocess.run(["security", "cms", "-D", "-i", str(profile)], capture_output=True, check=True).stdout
+                  info = plistlib.loads(decoded)
+                  devices = info.get("ProvisionedDevices") or []
+                  entitlements = info.get("Entitlements") or {}
+                  if info.get("ProvisionsAllDevices") or not devices or entitlements.get("get-task-allow"):
+                      sys.exit(f"::error::{name} is not signed with an Ad Hoc profile ({info.get('Name')}).")
+                  print(f"{name}: {info.get('Name')}, Ad Hoc, {len(devices)} device(s), expires {info.get('ExpirationDate')}.")
+                  counts.append(len(devices))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"devices={min(counts)}\n")
+          EOF
+
+      - name: Build an unsigned IPA
+        if: steps.secrets.outputs.signed == 'false'
+        run: |
+          xcodebuild archive \
+            -project "$SCHEME.xcodeproj" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/$SCHEME.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            APP_BUNDLE_ID="$APP_BUNDLE_ID" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+          mkdir -p "$RUNNER_TEMP/unsigned/Payload"
+          cp -R "$RUNNER_TEMP/$SCHEME.xcarchive/Products/Applications/$SCHEME.app" "$RUNNER_TEMP/unsigned/Payload/"
+          (cd "$RUNNER_TEMP/unsigned" && zip -qry "$SCHEME-unsigned.ipa" Payload)
+          echo "IPA_PATH=$RUNNER_TEMP/unsigned/$SCHEME-unsigned.ipa" >> "$GITHUB_ENV"
+
+      - name: Upload the IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.SCHEME }}-${{ env.TAG }}
+          path: ${{ env.IPA_PATH }}
+          if-no-files-found: error
+
+      - name: Prepare the GitHub Pages folder
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEVICES: ${{ steps.verify.outputs.devices }}
+        run: |
+          if base=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url' 2>/dev/null) && [[ "$base" == https://* ]]; then
+            echo "GitHub Pages is at $base"
+          else
+            base="https://leonardoramirezr.github.io/${GITHUB_REPOSITORY#*/}/"
+            echo "GitHub Pages is not enabled yet: using $base"
+          fi
+
+          folder="$RUNNER_TEMP/pages/$TAG"
+          mkdir -p "$folder"
+          cp "$IPA_PATH" "$folder/"
+          icon=LeoneraChat/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          sips -z 57 57 "$icon" --out "$folder/icon-57.png" > /dev/null
+          sips -z 512 512 "$icon" --out "$folder/icon-512.png" > /dev/null
+
+          python3 scripts/pages.py folder \
+            --dir "$folder" \
+            --tag "$TAG" \
+            --channel "$CHANNEL" \
+            --title "$APP_NAME" \
+            --version "$VERSION" \
+            --build "$BUILD_NUMBER" \
+            --branch "$GITHUB_REF_NAME" \
+            --sha "$GITHUB_SHA" \
+            --bundle-id "$APP_BUNDLE_ID" \
+            --ipa "$(basename "$IPA_PATH")" \
+            --devices "$DEVICES" \
+            --base-url "$base" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --repository-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+
+          {
+            echo "PAGES_FOLDER=$folder"
+            echo "PAGE_URL=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["page_url"])' "$folder/build.json")"
+            echo "INSTALL_URL=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["install_url"])' "$folder/build.json")"
+            echo "SITE_URL=$base"
+          } >> "$GITHUB_ENV"
+
+      - name: Create the release
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DEVICES: ${{ steps.verify.outputs.devices }}
+        run: |
+          notes="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "**Instalar en el iPhone:** [$PAGE_URL]($PAGE_URL) (ábrelo en Safari)."
+            echo
+            echo "- Versión $VERSION ($BUILD_NUMBER), rama \`$GITHUB_REF_NAME\`, commit $GITHUB_SHA."
+            echo "- Firmado Ad Hoc para $DEVICES dispositivo(s) registrado(s)."
+            echo "- Todos los builds: $SITE_URL"
+          } > "$notes"
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA_PATH" --clobber
+            gh release edit "$TAG" --notes-file "$notes"
+          elif [ "$CHANNEL" = "stable" ]; then
+            gh release create "$TAG" "$IPA_PATH" --target "$GITHUB_SHA" --title "$APP_NAME $TAG" --notes-file "$notes" --latest
+          else
+            gh release create "$TAG" "$IPA_PATH" --target "$GITHUB_SHA" --title "$APP_NAME $TAG ($GITHUB_REF_NAME)" --notes-file "$notes" --prerelease
+          fi
+
+      - name: Publish to GitHub Pages
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-pages.sh "$PAGES_FOLDER"
+
+      - name: Summary
+        env:
+          SIGNED: ${{ steps.secrets.outputs.signed }}
+          DEVICES: ${{ steps.verify.outputs.devices }}
+        run: |
+          {
+            echo "## $APP_NAME $TAG"
+            echo
+            echo "Versión $VERSION ($BUILD_NUMBER) · rama \`$GITHUB_REF_NAME\` · $CHANNEL"
+            echo
+            if [ "$SIGNED" = "true" ]; then
+              echo "**[Instalar en el iPhone]($PAGE_URL)**: abre el enlace en Safari en un iPhone registrado ($DEVICES en el perfil Ad Hoc)."
+              echo
+              echo "Enlace directo: \`$INSTALL_URL\`"
+              echo
+              echo "Todos los builds: $SITE_URL"
+            else
+              echo "Build **sin firmar** (no hay secrets de firma): el IPA está en los artefactos de esta ejecución y no se puede instalar en un iPhone."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Revoke the temporary development certificate
+        if: always() && steps.secrets.outputs.signed == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 scripts/asc.py revoke-new "$RUNNER_TEMP/development-certificates.txt"

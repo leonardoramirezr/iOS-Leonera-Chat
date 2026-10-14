@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "Leonera Chat";
+"NSCameraUsageDescription" = "Take photos to send in the chat or to your mini apps.";
+"NSMicrophoneUsageDescription" = "Dictate messages: the recording is sent to Groq to be transcribed.";
+"NSPhotoLibraryAddUsageDescription" = "Save generated images to your photo library.";
