@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Leonera Chat</title>
+  <!-- L monogram knocked out of a chat bubble. Square, full-bleed and opaque: iOS applies the
+       rounded mask itself. The artwork was drawn for an 824 body inset 100 in the 1024 canvas, so
+       the group below scales that body up to fill the canvas. -->
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="512" y1="100" x2="512" y2="924">
+      <stop offset="0" stop-color="#907EFF"/>
+      <stop offset="0.5" stop-color="#6547F2"/>
+      <stop offset="1" stop-color="#4316C8"/>
+    </linearGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="880" cy="900" r="580">
+      <stop offset="0" stop-color="#FF63C1" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FF63C1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sheen" gradientUnits="userSpaceOnUse" cx="230" cy="120" r="640">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper" gradientUnits="userSpaceOnUse" x1="512" y1="262" x2="512" y2="786">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDE9FF"/>
+    </linearGradient>
+    <mask id="cutW" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#FFFFFF"/>
+      <path d="M 446 384 L 446 566 L 588 566" fill="none" stroke="#000000" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+    <filter id="lift" x="-25%" y="-25%" width="150%" height="165%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="24"/>
+      <feOffset dy="26" result="a"/>
+      <feFlood flood-color="#26067F" flood-opacity="0.34"/>
+      <feComposite in2="a" operator="in" result="ambient"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+      <feOffset dy="6" result="b"/>
+      <feFlood flood-color="#26067F" flood-opacity="0.24"/>
+      <feComposite in2="b" operator="in" result="contact"/>
+      <feMerge><feMergeNode in="ambient"/><feMergeNode in="contact"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g transform="scale(1.242718) translate(-100 -100)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <rect width="1024" height="1024" fill="url(#sheen)"/>
+
+    <!-- speech bubble with the L knocked out -->
+    <g filter="url(#lift)">
+      <g mask="url(#cutW)">
+        <path d="M 423.78 262 L 600.22 262 C 658.32 262 687.37 262 713.57 270.65 L 718.64 271.89 C 752.79 284.32 779.68 311.21 792.11 345.36 L 793.35 350.43 C 802 376.63 802 405.68 802 463.78 L 802 480.22 C 802 538.32 802 567.37 793.35 593.57 L 792.11 598.64 C 779.68 632.79 752.79 659.68 718.64 672.11 L 713.57 673.35 C 687.37 682 658.32 682 600.22 682 L 367.2 682 C 299 682 255 743.6 202.2 774.4 C 192.3 730.4 222 624.8 222 574.2 L 222 463.78 C 222 405.68 222 376.63 230.65 350.43 L 231.89 345.36 C 244.32 311.21 271.21 284.32 305.36 271.89 L 310.43 270.65 C 336.63 262 365.68 262 423.78 262 Z" fill="url(#paper)"/>
+      </g>
+    </g>
+  </g>
+
+</svg>

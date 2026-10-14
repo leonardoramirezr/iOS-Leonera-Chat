@@ -1,0 +1,138 @@
+/* Tabs */
+"Chat" = "Chat";
+"Mini apps" = "Mini apps";
+"Settings" = "Ajustes";
+
+/* Onboarding */
+"Welcome to Leonera Chat" = "Bienvenido a Leonera Chat";
+"Chat, and create and edit images from your photos, with OpenAI. Enter your OpenAI API key to get started." = "Conversa, y crea y edita imágenes a partir de tus fotos, con OpenAI. Ingresa tu API key de OpenAI para comenzar.";
+"OpenAI API key" = "API key de OpenAI";
+"sk-…" = "sk-…";
+"Continue" = "Continuar";
+"Your key is stored in this device's Keychain and is only sent to api.openai.com." = "Tu key se guarda en el llavero de este dispositivo y solo se envía a api.openai.com.";
+"Get an API key" = "Obtener una API key";
+"OpenAI rejected this API key." = "OpenAI rechazó esta API key.";
+"Couldn't reach OpenAI. Check your connection and try again." = "No se pudo conectar con OpenAI. Revisa tu conexión e inténtalo de nuevo.";
+
+/* Chat */
+"New chat" = "Nuevo chat";
+"Start a new chat? This conversation will be deleted." = "¿Empezar un chat nuevo? Esta conversación se borrará.";
+"What do you want to create?" = "¿Qué quieres crear?";
+"Ask anything, or add photos and describe the image you want." = "Pregunta lo que quieras, o agrega fotos y describe la imagen que quieres.";
+"Text model" = "Modelo de texto";
+"Image model" = "Modelo de imagen";
+"Message" = "Mensaje";
+"Send" = "Enviar";
+"Stop" = "Detener";
+"Clear text" = "Borrar texto";
+"Add photos" = "Agregar fotos";
+"Remove photo" = "Quitar foto";
+"Photo Library" = "Fotos";
+"Camera" = "Cámara";
+"Paste Image" = "Pegar imagen";
+"There is no image to paste." = "No hay ninguna imagen para pegar.";
+"Couldn't read that photo." = "No se pudo leer esa foto.";
+"Thinking" = "Pensando";
+"Creating image" = "Creando imagen";
+"Stopped" = "Detenido";
+"Retry" = "Reintentar";
+"Update API key" = "Actualizar API key";
+"Copy" = "Copiar";
+"Copied" = "Copiado";
+"Share" = "Compartir";
+"Save" = "Guardar";
+"Saved" = "Guardada";
+"Couldn't save" = "No se pudo guardar";
+"Close" = "Cerrar";
+"Attached photo" = "Foto adjunta";
+"Generated image" = "Imagen generada";
+
+/* Replies */
+"Something went wrong." = "Algo salió mal.";
+"The response is incomplete (%@)." = "La respuesta está incompleta (%@).";
+"The response is incomplete." = "La respuesta está incompleta.";
+"The response was empty." = "La respuesta llegó vacía.";
+"The request was interrupted." = "La solicitud se interrumpió.";
+
+/* Dictation */
+"Dictate" = "Dictar";
+"Transcribe" = "Transcribir";
+"Transcribing" = "Transcribiendo";
+"Cancel" = "Cancelar";
+"Nothing was heard." = "No se oyó nada.";
+"No permission to use the microphone. Allow it in Settings." = "No hay permiso para usar el micrófono. Actívalo en Ajustes.";
+"Couldn't open the microphone." = "No se pudo abrir el micrófono.";
+"Couldn't reach Groq. Check your connection and try again." = "No se pudo conectar con Groq. Revisa tu conexión e inténtalo de nuevo.";
+"Groq rejected the API key. Change it in Settings." = "Groq rechazó la API key. Cámbiala en Ajustes.";
+"Groq asks you to wait: your API key has reached its usage limit for now." = "Groq pide esperar: tu API key llegó a su límite de uso por ahora.";
+"The recording is too long." = "La grabación es demasiado larga.";
+"Dictation needs a Groq API key" = "Dictar necesita una API key de Groq";
+"Add your Groq API key in Settings to dictate messages." = "Agrega tu API key de Groq en Ajustes para dictar mensajes.";
+"Open Settings" = "Abrir Ajustes";
+
+/* Mini apps */
+"Your mini apps" = "Tus mini apps";
+"A mini app is a prompt that asks you a few things and gives back one result. Set it up once and run it as often as you want." = "Una mini app es un prompt que te pregunta algunas cosas y te da un resultado. Configúrala una vez y úsala cuantas veces quieras.";
+"New mini app" = "Nueva mini app";
+"Edit mini app" = "Editar mini app";
+"Mini app" = "Mini app";
+"Edit" = "Editar";
+"Delete" = "Eliminar";
+"Delete mini app" = "Eliminar mini app";
+"Delete this mini app? Its last result will be deleted too." = "¿Eliminar esta mini app? Su último resultado también se borrará.";
+"Discard your changes?" = "¿Descartar los cambios?";
+"Discard changes" = "Descartar cambios";
+"Name" = "Nombre";
+"Prompt" = "Prompt";
+"Write a cover letter for this job:\n[[[Job posting]]]\nIn this tone:\n[[[Tone]]]" = "Escribe una carta de presentación para esta vacante:\n[[[Vacante]]]\nCon este tono:\n[[[Tono]]]";
+"Write [[[question]]] wherever you want to be asked something: your answer goes right after it." = "Escribe [[[pregunta]]] donde quieras que se te pregunte algo: tu respuesta va justo después.";
+"Add question" = "Agregar pregunta";
+"Question" = "Pregunta";
+"Add" = "Agregar";
+"It is asked every time the mini app runs, and the answer goes right after it in the prompt." = "Se pregunta cada vez que se usa la mini app, y la respuesta va justo después en el prompt.";
+"Questions" = "Preguntas";
+"No questions yet: it will be sent as it is." = "Aún no hay preguntas: se enviará tal cual.";
+"Files and images" = "Archivos e imágenes";
+"Fields to add files or images when running it. Each one is sent with its title." = "Campos para agregar archivos o imágenes al usarla. Cada uno se envía con su título.";
+"Kind" = "Tipo";
+"Image" = "Imagen";
+"File" = "Archivo";
+"Title or question" = "Título o pregunta";
+"Add field" = "Agregar campo";
+"1 question" = "1 pregunta";
+"%lld questions" = "%lld preguntas";
+"1 image" = "1 imagen";
+"%lld images" = "%lld imágenes";
+"1 file" = "1 archivo";
+"%lld files" = "%lld archivos";
+"This mini app was deleted." = "Esta mini app se eliminó.";
+"Your answer" = "Tu respuesta";
+"Run" = "Ejecutar";
+"Start over" = "Empezar de nuevo";
+"Clear the answers, the files and the result?" = "¿Borrar las respuestas, los archivos y el resultado?";
+"Result" = "Resultado";
+"Reading…" = "Leyendo…";
+"Files" = "Archivos";
+"Add images" = "Agregar imágenes";
+"Add files" = "Agregar archivos";
+"That file is too large: 25 MB at most." = "Ese archivo es demasiado grande: 25 MB como máximo.";
+"Couldn't read that file." = "No se pudo leer ese archivo.";
+
+/* Settings */
+"Models" = "Modelos";
+"Speech to text" = "Voz a texto";
+"Custom…" = "Otro…";
+"Model ID" = "ID del modelo";
+"The ID of any OpenAI model, as in the API." = "El ID de cualquier modelo de OpenAI, tal como aparece en la API.";
+"Key" = "Key";
+"Change API key" = "Cambiar API key";
+"Remove API key" = "Quitar API key";
+"Remove the OpenAI API key saved on this device?" = "¿Quitar la API key de OpenAI guardada en este dispositivo?";
+"Groq API key" = "API key de Groq";
+"gsk_…" = "gsk_…";
+"Used to dictate messages. It is stored in this device's Keychain and only sent to api.groq.com, along with your recordings." = "Se usa para dictar mensajes. Se guarda en el llavero de este dispositivo y solo se envía a api.groq.com, junto con lo que grabes.";
+"Remove the Groq API key saved on this device?" = "¿Quitar la API key de Groq guardada en este dispositivo?";
+"That looks like an OpenAI API key. Groq uses its own, which start with gsk_." = "Esa parece una API key de OpenAI. Groq usa las suyas, que empiezan con gsk_.";
+"Groq rejected this API key." = "Groq rechazó esta API key.";
+"About" = "Acerca de";
+"Version" = "Versión";
