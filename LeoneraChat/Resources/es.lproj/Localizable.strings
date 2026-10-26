@@ -123,6 +123,7 @@
 "Not available yet." = "Todavía no está disponible.";
 "Waiting for the response…" = "Esperando la respuesta…";
 "Couldn't read it." = "No se pudo leer.";
+"%lld characters" = "%lld caracteres";
 
 /* Settings */
 "Models" = "Modelos";

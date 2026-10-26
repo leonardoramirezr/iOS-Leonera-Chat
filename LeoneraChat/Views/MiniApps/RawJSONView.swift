@@ -56,9 +56,11 @@ struct RawJSONView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Copy", systemImage: "doc.on.doc") {
-                        UIPasteboard.general.string = text
+                        // Copies the whole JSON: the view shows images cut short.
+                        guard let file else { return }
+                        Task { UIPasteboard.general.string = await RawJSON.text(of: file, truncated: false) }
                     }
-                    .disabled(text == nil)
+                    .disabled(file == nil)
                 }
             }
         }
@@ -82,18 +84,35 @@ struct RawJSONView: View {
 
 enum RawJSON {
     /// The stored JSON, indented so it can be read. Runs off the main actor: a request can hold several photos.
-    static func text(of file: StoredFile) async -> String {
+    /// With `truncated`, long strings without spaces (images in base64, as data URLs) are cut short.
+    static func text(of file: StoredFile, truncated: Bool = true) async -> String {
         guard let data = try? BlobStore.data(for: file) else { return String(localized: "Couldn't read it.") }
-        return indented(data)
+        return indented(data, truncated: truncated)
     }
 
-    private static func indented(_ data: Data) -> String {
-        guard let object = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed),
-              let pretty = try? JSONSerialization.data(
-                  withJSONObject: object,
-                  options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-              )
-        else { return String(decoding: data, as: UTF8.self) }
+    private static func indented(_ data: Data, truncated: Bool) -> String {
+        guard var object = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) else {
+            return String(decoding: data, as: UTF8.self)
+        }
+        if truncated { object = shortened(object) }
+        guard let pretty = try? JSONSerialization.data(
+            withJSONObject: object,
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        ) else { return String(decoding: data, as: UTF8.self) }
         return String(decoding: pretty, as: UTF8.self)
+    }
+
+    /// Base64 has no spaces, so a long string without any is data (an image or a file), not text.
+    private static func shortened(_ value: Any) -> Any {
+        switch value {
+        case let text as String where text.count > 200 && !text.contains(where: \.isWhitespace):
+            return "\(text.prefix(32))… \(String(localized: "\(text.count) characters"))"
+        case let array as [Any]:
+            return array.map(shortened)
+        case let object as [String: Any]:
+            return object.mapValues(shortened)
+        default:
+            return value
+        }
     }
 }
