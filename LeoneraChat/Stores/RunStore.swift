@@ -93,7 +93,9 @@ final class RunStore: ReplyHost {
         let imageModel = settings.imageModel
         start(app.id) {
             let request = await MiniAppRequest.make(app: app, run: run, model: model, imageModel: imageModel)
-            try await ReplyRunner.send(request, apiKey: apiKey, host: self, reply: reply.id)
+            let body = try OpenAIClient.body(for: request)
+            await self.keepRequest(body, reply: reply.id, app: app.id)
+            try await ReplyRunner.send(body, apiKey: apiKey, host: self, reply: reply.id)
         } failing: { error in
             ReplyRunner.fail(self, reply: reply.id, error: error)
         }
@@ -150,6 +152,14 @@ final class RunStore: ReplyHost {
             guard let result = run.result, result.isPending, result.responseId != nil else { continue }
             follow(app, reply: result.id)
         }
+    }
+
+    /// Keeps the request exactly as it is sent, so the run can show it.
+    private func keepRequest(_ body: Data, reply id: UUID, app: UUID) async {
+        let file = await Task.detached { try? BlobStore.save(body, mimeType: "application/json") }.value
+        guard let file else { return }
+        update(reply: id) { $0.rawRequest = file }
+        save(app)
     }
 
     private func follow(_ app: UUID, reply id: UUID) {
@@ -214,4 +224,7 @@ final class RunStore: ReplyHost {
     func save() {
         for app in runs.keys { save(app) }
     }
+
+    /// Each run keeps the JSON it was sent and answered with, to show it.
+    var keepsRawResponse: Bool { true }
 }

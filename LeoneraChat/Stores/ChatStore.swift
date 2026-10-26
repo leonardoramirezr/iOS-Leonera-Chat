@@ -100,7 +100,7 @@ final class ChatStore: ReplyHost {
         let imageModel = settings.imageModel
         start {
             let request = await ChatRequest.make(history: history, model: model, imageModel: imageModel)
-            try await ReplyRunner.send(request, apiKey: apiKey, host: self, reply: reply.id)
+            try await ReplyRunner.send(try OpenAIClient.body(for: request), apiKey: apiKey, host: self, reply: reply.id)
         } failing: { error in
             ReplyRunner.fail(self, reply: reply.id, error: error)
         }
@@ -145,4 +145,7 @@ final class ChatStore: ReplyHost {
     func save() {
         Storage.save(messages, to: Self.file)
     }
+
+    /// The chat sends the whole conversation on every turn: its raw JSON is not kept.
+    var keepsRawResponse: Bool { false }
 }

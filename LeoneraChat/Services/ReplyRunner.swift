@@ -7,6 +7,8 @@ protocol ReplyHost: AnyObject {
     /// Changes the reply, if it is still there.
     func update(reply id: UUID, _ change: (inout Message) -> Void)
     func save()
+    /// Whether the raw JSON of the response is kept with the reply, to be shown in the app.
+    var keepsRawResponse: Bool { get }
 }
 
 /// What the chat and the mini apps share: a background response followed until it ends, and its output
@@ -17,13 +19,13 @@ enum ReplyRunner {
     /// Consecutive connection failures tolerated while polling, e.g. while the phone is locked.
     private static let maxPollFailures = 8
 
-    /// Creates the response and follows it until it ends.
-    static func send(_ request: ResponseRequest, apiKey: String, host: ReplyHost, reply id: UUID) async throws {
+    /// Creates the response from its JSON body, and follows it until it ends.
+    static func send(_ body: Data, apiKey: String, host: ReplyHost, reply id: UUID) async throws {
         let client = OpenAIClient(apiKey: apiKey)
-        let response = try await client.createResponse(request)
-        host.update(reply: id) { $0.responseId = response.id }
+        let created = try await client.createResponse(body)
+        host.update(reply: id) { $0.responseId = created.response.id }
         host.save()
-        try await follow(client, responseID: response.id, first: response, host: host, reply: id)
+        try await follow(client, responseID: created.response.id, first: created, host: host, reply: id)
     }
 
     /// Picks up a response created earlier, e.g. before the app was closed.
@@ -56,25 +58,25 @@ enum ReplyRunner {
     private static func follow(
         _ client: OpenAIClient,
         responseID: String,
-        first: OpenAIResponse?,
+        first: FetchedResponse?,
         host: ReplyHost,
         reply id: UUID
     ) async throws {
-        var response = first
+        var fetched = first
         var failures = 0
 
         while true {
-            if let response {
+            if let response = fetched?.response {
                 guard response.isRunning else { break }
                 let phase: Message.Phase = response.isGeneratingImage ? .image : .thinking
                 host.update(reply: id) { message in
                     if message.status == .pending, message.phase != phase { message.phase = phase }
                 }
             }
-            if response != nil || failures > 0 { try await Task.sleep(for: pollInterval) }
+            if fetched != nil || failures > 0 { try await Task.sleep(for: pollInterval) }
 
             do {
-                response = try await client.retrieveResponse(responseID)
+                fetched = try await client.retrieveResponse(responseID)
                 failures = 0
             } catch let error as APIError where error.isTransient {
                 failures += 1
@@ -82,22 +84,28 @@ enum ReplyRunner {
             }
         }
 
-        guard let response else { return }
-        let output = await store(response)
+        guard let last = fetched else { return }
+        let output = await store(last, keepsRaw: host.keepsRawResponse)
 
         var finished = false
-        host.update(reply: id) { finished = finish(&$0, response: response, text: output.text, images: output.images) }
+        host.update(reply: id) {
+            finished = finish(&$0, response: last.response, text: output.text, images: output.images, raw: output.raw)
+        }
         if finished {
             host.save()
         } else {
             // Stopped while the images were on their way.
-            BlobStore.delete(output.images.flatMap { [$0.full, $0.input] })
+            BlobStore.delete(output.images.flatMap { [$0.full, $0.input] } + [output.raw].compactMap { $0 })
         }
     }
 
-    /// Writes the generated images to disk, each with the lighter copy sent back in later turns.
-    private nonisolated static func store(_ response: OpenAIResponse) async -> (text: String, images: [GeneratedImage]) {
-        let (text, images) = response.read()
+    /// Writes the generated images to disk, each with the lighter copy sent back in later turns, and the
+    /// response's JSON when it is kept.
+    private nonisolated static func store(
+        _ fetched: FetchedResponse,
+        keepsRaw: Bool
+    ) async -> (text: String, images: [GeneratedImage], raw: StoredFile?) {
+        let (text, images) = fetched.response.read()
         let generated = images.compactMap { data -> GeneratedImage? in
             guard let full = try? BlobStore.save(data, mimeType: ImageProcessing.mimeType(of: data)) else { return nil }
             guard let prepared = try? ImageProcessing.prepare(data),
@@ -105,15 +113,24 @@ enum ReplyRunner {
             else { return GeneratedImage(full: full, input: full) }
             return GeneratedImage(full: full, input: input)
         }
-        return (text, generated)
+        var raw: StoredFile?
+        if keepsRaw { raw = try? BlobStore.save(fetched.raw, mimeType: "application/json") }
+        return (text, generated, raw)
     }
 
     /// Writes a finished response into its message. False when the message stopped waiting for it.
-    private static func finish(_ message: inout Message, response: OpenAIResponse, text: String, images: [GeneratedImage]) -> Bool {
+    private static func finish(
+        _ message: inout Message,
+        response: OpenAIResponse,
+        text: String,
+        images: [GeneratedImage],
+        raw: StoredFile?
+    ) -> Bool {
         guard message.status == .pending else { return false }
 
         message.text = text
         message.images = images
+        message.rawResponse = raw
         message.phase = nil
 
         switch response.status {
