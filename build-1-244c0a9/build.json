@@ -1,0 +1,19 @@
+{
+  "tag": "build-1-244c0a9",
+  "channel": "prerelease",
+  "title": "Leonera Chat",
+  "version": "0.0.0",
+  "build": "1",
+  "branch": "claude/zen-meitner-b158vo",
+  "sha": "244c0a9a115d06042125dd912dbc970629244a6b",
+  "date": "2026-10-14T05:08:42Z",
+  "devices": 1,
+  "bundle_id": "com.leonardoramirezr.leonerachat",
+  "ipa": "LeoneraChat.ipa",
+  "ipa_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-1-244c0a9/LeoneraChat.ipa",
+  "manifest_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-1-244c0a9/manifest.plist",
+  "install_url": "itms-services://?action=download-manifest&url=https%3A%2F%2Fleonardoramirezr.github.io%2FiOS-Leonera-Chat%2Fbuild-1-244c0a9%2Fmanifest.plist",
+  "page_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-1-244c0a9/",
+  "run_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat/actions/runs/38514900536",
+  "repository_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat"
+}

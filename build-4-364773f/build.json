@@ -1,0 +1,19 @@
+{
+  "tag": "build-4-364773f",
+  "channel": "prerelease",
+  "title": "Leonera Chat",
+  "version": "0.1.0",
+  "build": "4",
+  "branch": "feature/raw-json-mini-apps",
+  "sha": "364773f6ccf0c7c35415e59230fad54d4191482a",
+  "date": "2026-10-26T03:55:43Z",
+  "devices": 2,
+  "bundle_id": "com.leonardoramirezr.leonerachat",
+  "ipa": "LeoneraChat.ipa",
+  "ipa_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-4-364773f/LeoneraChat.ipa",
+  "manifest_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-4-364773f/manifest.plist",
+  "install_url": "itms-services://?action=download-manifest&url=https%3A%2F%2Fleonardoramirezr.github.io%2FiOS-Leonera-Chat%2Fbuild-4-364773f%2Fmanifest.plist",
+  "page_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/build-4-364773f/",
+  "run_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat/actions/runs/40266313991",
+  "repository_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat"
+}

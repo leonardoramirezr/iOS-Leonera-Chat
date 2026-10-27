@@ -1,0 +1,19 @@
+{
+  "tag": "0.2.0",
+  "channel": "stable",
+  "title": "Leonera Chat",
+  "version": "0.2.0",
+  "build": "6",
+  "branch": "main",
+  "sha": "be5bd82050ca4ee0ee4a446cb557f40fc544bc5a",
+  "date": "2026-10-27T04:51:29Z",
+  "devices": 2,
+  "bundle_id": "com.leonardoramirezr.leonerachat",
+  "ipa": "LeoneraChat.ipa",
+  "ipa_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/0.2.0/LeoneraChat.ipa",
+  "manifest_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/0.2.0/manifest.plist",
+  "install_url": "itms-services://?action=download-manifest&url=https%3A%2F%2Fleonardoramirezr.github.io%2FiOS-Leonera-Chat%2F0.2.0%2Fmanifest.plist",
+  "page_url": "https://leonardoramirezr.github.io/iOS-Leonera-Chat/0.2.0/",
+  "run_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat/actions/runs/40451930422",
+  "repository_url": "https://github.com/leonardoramirezr/iOS-Leonera-Chat"
+}
