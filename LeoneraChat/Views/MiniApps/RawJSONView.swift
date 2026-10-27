@@ -1,0 +1,118 @@
+import SwiftUI
+
+/// Which side of a run the raw JSON shows.
+enum RawPart: String, Identifiable, CaseIterable {
+    case request, response
+
+    var id: String { rawValue }
+}
+
+/// The request a run sent, or the response it got back, as raw JSON. Read live from the run, so a
+/// response that arrives while this is open shows up here.
+struct RawJSONView: View {
+    let appID: UUID
+    @State private var part: RawPart
+    @State private var text: String?
+
+    @Environment(RunStore.self) private var runs
+    @Environment(\.dismiss) private var dismiss
+
+    init(appID: UUID, part: RawPart) {
+        self.appID = appID
+        _part = State(initialValue: part)
+    }
+
+    var body: some View {
+        let result = runs.run(appID).result
+        let file = part == .request ? result?.rawRequest : result?.rawResponse
+
+        NavigationStack {
+            ScrollView {
+                content(file)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .task(id: file) {
+                        text = nil
+                        guard let file else { return }
+                        let loaded = await RawJSON.text(of: file)
+                        if !Task.isCancelled { text = loaded }
+                    }
+            }
+            .safeAreaInset(edge: .top) {
+                Picker("Raw JSON", selection: $part) {
+                    Text("Request").tag(RawPart.request)
+                    Text("Response").tag(RawPart.response)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding()
+                .background(.bar)
+            }
+            .navigationTitle("Raw JSON")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Copy", systemImage: "doc.on.doc") {
+                        // Copies the whole JSON: the view shows images cut short.
+                        guard let file else { return }
+                        Task { UIPasteboard.general.string = await RawJSON.text(of: file, truncated: false) }
+                    }
+                    .disabled(file == nil)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func content(_ file: StoredFile?) -> some View {
+        if let text {
+            Text(verbatim: text)
+                .font(.system(.footnote, design: .monospaced))
+                .textSelection(.enabled)
+        } else if file != nil {
+            ProgressView()
+        } else if part == .request {
+            ContentUnavailableView("Not available yet.", systemImage: "curlybraces")
+        } else {
+            ContentUnavailableView("Waiting for the response…", systemImage: "curlybraces")
+        }
+    }
+}
+
+enum RawJSON {
+    /// The stored JSON, indented so it can be read. Runs off the main actor: a request can hold several photos.
+    /// With `truncated`, long strings without spaces (images in base64, as data URLs) are cut short.
+    static func text(of file: StoredFile, truncated: Bool = true) async -> String {
+        guard let data = try? BlobStore.data(for: file) else { return String(localized: "Couldn't read it.") }
+        return indented(data, truncated: truncated)
+    }
+
+    private static func indented(_ data: Data, truncated: Bool) -> String {
+        guard var object = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) else {
+            return String(decoding: data, as: UTF8.self)
+        }
+        if truncated { object = shortened(object) }
+        guard let pretty = try? JSONSerialization.data(
+            withJSONObject: object,
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        ) else { return String(decoding: data, as: UTF8.self) }
+        return String(decoding: pretty, as: UTF8.self)
+    }
+
+    /// Base64 has no spaces, so a long string without any is data (an image or a file), not text.
+    private static func shortened(_ value: Any) -> Any {
+        switch value {
+        case let text as String where text.count > 200 && !text.contains(where: \.isWhitespace):
+            return "\(text.prefix(32))… \(String(localized: "\(text.count) characters"))"
+        case let array as [Any]:
+            return array.map(shortened)
+        case let object as [String: Any]:
+            return object.mapValues(shortened)
+        default:
+            return value
+        }
+    }
+}

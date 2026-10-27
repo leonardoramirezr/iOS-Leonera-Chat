@@ -41,6 +41,9 @@ struct Message: Codable, Identifiable, Hashable {
     var startedAt = Date()
     /// The background response, once created.
     var responseId: String?
+    /// The request and the response as they were sent and received, kept for mini apps to show.
+    var rawRequest: StoredFile?
+    var rawResponse: StoredFile?
     var phase: Phase?
     var notice: String?
     var error: MessageError?
@@ -58,7 +61,7 @@ struct Message: Codable, Identifiable, Hashable {
 
     /// Every stored file the message refers to.
     var files: [StoredFile] {
-        photos + images.flatMap { [$0.full, $0.input] }
+        photos + images.flatMap { [$0.full, $0.input] } + [rawRequest, rawResponse].compactMap { $0 }
     }
 }
 

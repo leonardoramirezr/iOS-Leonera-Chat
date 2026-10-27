@@ -14,6 +14,7 @@ struct MiniAppRunnerView: View {
     @State private var editing: EditorTarget?
     @State private var confirmingStartOver = false
     @State private var viewing: StoredFile?
+    @State private var rawPart: RawPart?
     @State private var problem: String?
     @FocusState private var focusedQuestion: String?
 
@@ -50,6 +51,9 @@ struct MiniAppRunnerView: View {
         }
         .sheet(item: $editing) { target in
             MiniAppEditorView(app: target.app)
+        }
+        .sheet(item: $rawPart) { part in
+            RawJSONView(appID: app.id, part: part)
         }
         .confirmationDialog(
             "Clear the answers, the files and the result?",
@@ -110,20 +114,26 @@ struct MiniAppRunnerView: View {
             }
 
             Section {
-                if running {
-                    Button(role: .destructive) {
-                        runs.stop(app.id)
-                    } label: {
-                        Label("Stop", systemImage: "stop.fill")
+                HStack {
+                    if running {
+                        Button(role: .destructive) {
+                            runs.stop(app.id)
+                        } label: {
+                            Label("Stop", systemImage: "stop.fill")
+                        }
+                    } else {
+                        Button {
+                            send(app, proxy)
+                        } label: {
+                            Label("Run", systemImage: "paperplane.fill")
+                                .fontWeight(.semibold)
+                        }
+                        .disabled(runs.isReading(app))
                     }
-                } else {
-                    Button {
-                        send(app, proxy)
-                    } label: {
-                        Label("Run", systemImage: "paperplane.fill")
-                            .fontWeight(.semibold)
+                    Spacer()
+                    if run.result?.rawRequest != nil {
+                        rawButton(.request)
                     }
-                    .disabled(runs.isReading(app))
                 }
                 Button("Start over", role: .destructive) { confirmingStartOver = true }
                     .disabled(run.isEmpty)
@@ -142,11 +152,29 @@ struct MiniAppRunnerView: View {
                         onUpdateKey: { settings.apiKey = "" }
                     )
                     .padding(.vertical, 6)
+
+                    if result.rawResponse != nil {
+                        HStack {
+                            Spacer()
+                            rawButton(.response)
+                        }
+                    }
                 }
                 .id("result")
             }
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// Opens the raw JSON of the run on one of its two parts.
+    private func rawButton(_ part: RawPart) -> some View {
+        Button {
+            rawPart = part
+        } label: {
+            Image(systemName: "curlybraces")
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("Raw JSON"))
     }
 
     @ViewBuilder

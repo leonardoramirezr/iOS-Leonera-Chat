@@ -81,6 +81,7 @@ enum BlobStore {
         case "image/webp": "webp"
         case "image/gif": "gif"
         case "application/pdf": "pdf"
+        case "application/json": "json"
         default: "bin"
         }
     }

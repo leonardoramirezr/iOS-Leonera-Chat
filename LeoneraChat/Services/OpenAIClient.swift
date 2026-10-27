@@ -156,6 +156,12 @@ struct OpenAIResponse: Decodable {
     }
 }
 
+/// A response as OpenAI sent it, with the JSON it came in.
+struct FetchedResponse {
+    let response: OpenAIResponse
+    let raw: Data
+}
+
 struct OpenAIClient {
     let apiKey: String
 
@@ -172,28 +178,36 @@ struct OpenAIClient {
             let data: [Model]
         }
 
-        let list: List = try await call("models", timeout: 20)
+        let (list, _): (List, Data) = try await call("models", timeout: 20)
         return list.data.sorted { ($0.created ?? 0) > ($1.created ?? 0) }.map(\.id)
     }
 
-    func createResponse(_ request: ResponseRequest) async throws -> OpenAIResponse {
-        try await call("responses", method: "POST", body: try JSONEncoder().encode(request))
+    /// The JSON body a response is created with. It is kept as it is sent, so it can be shown.
+    static func body(for request: ResponseRequest) throws -> Data {
+        try JSONEncoder().encode(request)
     }
 
-    func retrieveResponse(_ id: String) async throws -> OpenAIResponse {
-        try await call("responses/\(Self.escape(id))", timeout: 20)
+    func createResponse(_ body: Data) async throws -> FetchedResponse {
+        let (response, raw): (OpenAIResponse, Data) = try await call("responses", method: "POST", body: body)
+        return FetchedResponse(response: response, raw: raw)
+    }
+
+    func retrieveResponse(_ id: String) async throws -> FetchedResponse {
+        let (response, raw): (OpenAIResponse, Data) = try await call("responses/\(Self.escape(id))", timeout: 20)
+        return FetchedResponse(response: response, raw: raw)
     }
 
     func cancelResponse(_ id: String) async throws {
-        let _: OpenAIResponse = try await call("responses/\(Self.escape(id))/cancel", method: "POST")
+        let _: (OpenAIResponse, Data) = try await call("responses/\(Self.escape(id))/cancel", method: "POST")
     }
 
+    /// The decoded value, and the JSON it was decoded from.
     private func call<T: Decodable>(
         _ path: String,
         method: String = "GET",
         body: Data? = nil,
         timeout: TimeInterval = 60
-    ) async throws -> T {
+    ) async throws -> (T, Data) {
         try Task.checkCancellation()
 
         var request = URLRequest(url: URL(string: "\(Self.baseURL.absoluteString)/\(path)")!)
@@ -207,7 +221,7 @@ struct OpenAIClient {
 
         let data = try await HTTP.send(request, to: .openAI)
         do {
-            return try JSONDecoder().decode(T.self, from: data)
+            return (try JSONDecoder().decode(T.self, from: data), data)
         } catch {
             throw APIError(service: .openAI, message: "Invalid response", status: 0, code: nil)
         }

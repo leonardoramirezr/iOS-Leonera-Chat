@@ -117,6 +117,13 @@
 "Add files" = "Agregar archivos";
 "That file is too large: 25 MB at most." = "Ese archivo es demasiado grande: 25 MB como máximo.";
 "Couldn't read that file." = "No se pudo leer ese archivo.";
+"Raw JSON" = "JSON sin procesar";
+"Request" = "Solicitud";
+"Response" = "Respuesta";
+"Not available yet." = "Todavía no está disponible.";
+"Waiting for the response…" = "Esperando la respuesta…";
+"Couldn't read it." = "No se pudo leer.";
+"%lld characters" = "%lld caracteres";
 
 /* Settings */
 "Models" = "Modelos";
